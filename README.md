@@ -154,7 +154,7 @@ You can confirm you're authenticated by typing:
 
 ### Get a Model
 
-It is very important to choose a model that fits your card, and this can involve a lot of experimentation. We are going to get a model from the [unsloth/gpt-oss-20b-GGUF](unsloth/gpt-oss-20b-GGUF) repository.
+It is very important to choose a model that fits your card, and this can involve a lot of experimentation. We are going to get a model from the [unsloth/gpt-oss-20b-GGUF]([unsloth/gpt-oss-20b-GGUF](https://huggingface.co/unsloth/gpt-oss-20b-GGUF) repository.
 
 Let's see what's in this repository first:
 
@@ -304,6 +304,8 @@ Should return something like:
 Hello! How can I assist you today?
 ```
 
+Finally, you can point your browser to localhost:8081 (or whatever port you set), and get a nice shiny UI in your browser for talking with your model! We won't be using it later on, but it's a good sanity check.
+
 ## Where Are We At?
 
 At this point, take a little break. You've done quite a lot! You've
@@ -312,7 +314,8 @@ At this point, take a little break. You've done quite a lot! You've
 - Got a model from HuggingFace to play with and set up authentication with them to make it easy to download future models
 - Got ```lllama-server``` to load your model
 - Sent a request to the model and successfully got a response back
+- Accessed ```llama-server```'s webUI to start talking.
 
-If you are already familiar with how a REST API works, here are the details for ```llama-server```: [https://llama.app/docs/api](https://llama.app/docs/api)
+If you are already familiar with how a REST API works, here are further details for ```llama-server```: [https://llama.app/docs/api](https://llama.app/docs/api)
 
 Now we need to set up llama-swap for the next stage. See the [llama-swap page](./llama-swap.md) to continue this setup guide.
