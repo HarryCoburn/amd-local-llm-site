@@ -32,7 +32,9 @@ At this stage, assuming you have the AMD drivers installed for the kernel, here 
 amdgpu (kernel driver, cachy should install) -> vulkan-radeon (userspace driver) -> ggml-vulkan/ggml-hip (libraries that do computation on the card) -> llama-cpp (inference engine that loads the models and runs commands agains them) -> llama-swap (reverse proxy to make working with llama-cpp easier.)
 
 *Installation*
+
 ```sudo pacman -S llama-cpp ggml-vulkan ggml-hip vulkan-radeon```
+
 ```paru -S llama-swap-bin```
 
 If you do not have paru to install packages from the AUR, use your preferred AUR downloader or use pacman to install paru.
@@ -43,7 +45,7 @@ Before we go deeper into the LLM side, let's make sure our drivers are correct.
 
 ```vulkaninfo --summary | grep -i -E "deviceName|driverName"```
 
-vulkaninfo is a diagnostic tool This confirms the card exists. On my machine, this returns:
+vulkaninfo is a diagnostic tool. We use it to confirm the card exists to the Vulkan driver. On my machine, this returns:
 
 ```
 WARNING: radv is not a conformant Vulkan implementation, testing use only.
@@ -51,7 +53,7 @@ WARNING: radv is not a conformant Vulkan implementation, testing use only.
 	driverName         = radv
 ```
 
-```radv``` is the driver we want. You can ignore the warning; it's related to a certification process that the driver has not gone through. If the driverName and deviceName look right, then Vulkan-radeon recognizes your card.
+```radv``` is the driver we want. You can ignore the warning; it's related to a certification process that the driver has not gone through. If the driverName and deviceName look right, then your card drivers are loaded.
 
 Next, run:
 
@@ -76,7 +78,7 @@ If you've gotten this far, congratulations! Your drivers are complete and llama-
 
 *Benchmarking Tool*
 
-Now, install rocm-smi from the AUR. For whatever reason, I had to install this using ```yay``` instead of ```paru```. Install yay if you haven't using ```pacman```, then input:
+Now, install ```rocm-smi``` from the AUR. For whatever reason, I had to install this using ```yay``` instead of ```paru```. Install yay if you haven't using ```pacman```, then input:
 
 ```yay rocm-smi```
 
@@ -97,4 +99,108 @@ Device  Node  IDs              Temp    Power  Partitions          SCLK    MCLK  
 =============================================== End of ROCm SMI Log ================================================
 ```
 
-Weirdly, this tool will report a warning when your card is idle. This is normal though. I have nothing active going to the card beyond the basics. If I suspect power problems, temperature problems, fan problems, or want a direct confirmation from the card that my VRAM or GPU usage is pegged, this will confirm it directly from the card.
+Weirdly, this tool will report a warning when your card is idle. This is normal though. I have nothing active going to the card beyond the basics. If I suspect power problems, temperature problems, fan problems, or think VRAM or GPU usage is pegged, this will confirm it directly from the card.
+
+## Get Your First Model
+
+I use HuggingFace to find models, and I find it is easier to use HuggingFace's tools than to have ```llama-server``` do the download for me.
+
+### Preparation
+
+Install python-huggingface-hub:
+
+```sudo pacman -S python-huggingface-hub```
+
+Now create a directory wherever you want to hold the models. I will be using ```~/models```. If you choose another location, you will need to update the configuration files later to point to your chosen location.
+
+```
+cd ~
+mkdir ./models
+```
+### Accessing HuggingFace
+
+HuggingFace is a repository of models. It will be easier on you if you make a HuggingFace account now at (huggingface.co)[https://huggingface.co] because you'll get faster download speeds.
+
+Once you make an account, go to (https://huggingface.co/settings/tokens)[https://huggingface.co/settings/tokens]. Click on the "+ Create new token" button. Choose a Read token type and give it a name, then click Create New Token. A modal will pop up with a key. Copy that key and paste it into a text file. Do not close the window before this! If you do, delete the token and create a new one.
+
+Now, log into HuggingFace on the command line.
+
+```hf auth login```
+
+Choose "Paste an access token", copy your token string, then use ```Ctrl+shift+v``` to paste it into the console and hit enter. You will not see the pasted content.
+
+You'll see something like:
+
+```
+❯ hf auth login
+? How would you like to log in? Paste an access token
+    To log in, `huggingface_hub` requires a token generated from https://huggingface.co/settings/tokens .
+Enter your token (input will not be visible):
+Token is valid (permission: read).
+The token `read-tok` has been saved to /home/$USER/.cache/huggingface/stored_tokens
+Your token has been saved to /home/$USER/.cache/huggingface/token
+Login successful.
+The current active token is: `read-tok`
+```
+
+$USER is a substitute for my username, and read-tok is the name I gave my token. 
+
+If your token key ever gets exposed, revoke it from HuggingFace's website. Treat it like a password.
+
+You can confirm you're authenticated by typing:
+
+```hf auth whoami```
+
+### Get a Model
+
+It is very important to choose a model that fits your card, and this can involve a lot of experimentation. We are going to get a model from the (unsloth/gpt-oss-20b-GGUF)[unsloth/gpt-oss-20b-GGUF] repository.
+
+Let's see what's in this repository first:
+
+```hf download unsloth/gpt-oss-20b-GGUF --dry-run```
+
+**Very Important:** Do not neglect the --dry-run flag or you'll download the whole repository!
+
+In the output I get something like:
+
+```
+❯ hf download unsloth/gpt-oss-20b-GGUF --dry-run
+[dry-run] Fetching 22 files: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 22/22 [00:00<00:00, 52.32it/s]
+Download complete: :                                                                                                                                                                                                                       |  0.00B            [dry-run] Will download 21 files (out of 22) totalling 179.4G.                                                                                                                                                                     |  0.00B /  0.00B
+FILE                        SIZE
+--------------------------- -----
+.gitattributes              2.8K
+README.md                   8.8K
+config.json                 1.6K
+gpt-oss-20b-F16.gguf        13.8G
+gpt-oss-20b-Q2_K.gguf       11.5G
+gpt-oss-20b-Q2_K_L.gguf     11.8G
+gpt-oss-20b-Q3_K_M.gguf     11.5G
+gpt-oss-20b-Q3_K_S.gguf     11.5G
+gpt-oss-20b-Q4_0.gguf       11.5G
+gpt-oss-20b-Q4_1.gguf       11.6G
+gpt-oss-20b-Q4_K_M.gguf     -
+gpt-oss-20b-Q4_K_S.gguf     11.6G
+gpt-oss-20b-Q5_K_M.gguf     11.7G
+gpt-oss-20b-Q5_K_S.gguf     11.7G
+gpt-oss-20b-Q6_K.gguf       12.0G
+gpt-oss-20b-Q8_0.gguf       12.1G
+gpt-oss-20b-UD-Q4_K_XL.gguf 11.9G
+gpt-oss-20b-UD-Q6_K_XL.gguf 12.0G
+gpt-oss-20b-UD-Q8_K_XL.gguf 13.2G
+notebook.ipynb              79.6K
+params                      149.0
+template                    7.4K
+Download complete: :                                                                                                                                                                                                                       |  0.00B
+Reconstruction complete: |                
+```
+
+Each .gguf file is a model that you can point ```llama-cpp``` toward. Let's get the Q4_K_M model and put it in our models directory.
+
+```hf download unsloth/gpt-oss-20b-GGUF gpt-oss-20b-Q4_K_M.gguf --local-dir ~/models```
+
+Change --local-dir to match wherever you want to put your models. 
+
+Since we authenticated first with HuggingFace, you'll get the model very quickly. It took me at least 5 minutes to get a model before I set up authentication.
+
+If you want to download other models, it's simply a matter of replacing the repository name and the file name. You can also download directly off of the HuggingFace website. Just make sure your models all land in your chosen directory. We will assume you're using this one though.
