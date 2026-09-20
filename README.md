@@ -9,11 +9,12 @@ Last updated: 2026-09-20
 ## Starting Assumptions:
 
 1. You have CachyOS installed and updated.
-2. You have some familiarity with Linux and Arch-based systems
+2. You have some familiarity with Linux and Arch-based systems.
 3. You have CachyOS's AMD kernel drivers installed. I switched from an NVIDIA card to an AMD card, so i used the instructions (here)[https://wiki.cachyos.org/features/chwd/gpu_migration/] from CachyOS do do the driver flip.
 4. You have an AMD card from the RDNA4 class. These are cards in the Radeon RX 9000 series. This may work with other AMD cards but I cannot guarantee it.
-5. At least 32 GB of system RAM
-6. Sufficient hard drive space, preferably on an NVMe. I'm not sure exactly what sufficient is yet; I have a 1 TB drive for my OS and a 2 TB drive for ~/.
+5. You have only one discrete GPU, not multiple cards (integrated GPU with your motherboard does not count).
+6. At least 32 GB of system RAM.
+7. Sufficient hard drive space, preferably on an NVMe. I'm not sure exactly what sufficient is yet; I have a 1 TB drive for my OS and a 2 TB drive for ~/.
 
 ## First Packages
 
@@ -204,3 +205,114 @@ Change --local-dir to match wherever you want to put your models.
 Since we authenticated first with HuggingFace, you'll get the model very quickly. It took me at least 5 minutes to get a model before I set up authentication.
 
 If you want to download other models, it's simply a matter of replacing the repository name and the file name. You can also download directly off of the HuggingFace website. Just make sure your models all land in your chosen directory. We will assume you're using this one though.
+
+## Our First Test of the Model
+
+Now we will use ```llama-server``` to load the model. Open a fresh terminal and use this command:
+
+```
+llama-server \
+  --device Vulkan0 \
+  --model ~/models/gpt-oss-20b-Q4_K_M.gguf \
+  --n-gpu-layers 99 \
+  --flash-attn on \
+  --ctx-size 16384 \
+  --host 127.0.0.1 \
+  --port 8081
+```
+
+I used ```\```` to make it multiline so we can see all the parameters.
+
+- **--device <device>**: What device are we using? It will either be ```Vulkan0``` or ```ROCm0``` in the setup.
+- **--model <path+model>**: What model are we using? Point to your path and the file name.
+- **n-gpu-layers 99**: Each model has a stack of transformer layers. When you send a token through, it passes through each one. This flag sets how many of those layers you want to have running on the GPU rather than CPU+RAM. Ideally, especially for your first runs, you want everything to run on the GPU. We set a very high number as a shorthand for "load all layers". If we omitted the flag, ```llama-cpp``` would default to running everything on the CPU!
+- **flash-attn on**: We almost always want "flash-attention" on. The reasons why are complicated, but it will make your prompts faster and the KV cache memory lower, which gives us more room to work with. If you're turning this off, you should know why before you do.
+- **ctx-size 16384**: This sets the context size. It is how many tokens the model can hold at once. The more you set, the more VRAM your model will take up above the overhead of loading the model into memory, but the more it will remember per conversation. If context size is too large, you could see errors in ```llama-cpp``` or the conversation will start dropping earlier tokens, which creates a loss of context. This is one of the major knobs to tweak with your experiements. 16384 (16K) is a good starting point for this model.
+- **host <ip>**: This IS a server, so we need to say where we are hosting it. Right now, I am only hosting locally, so I point it to the localhost IP.
+- **port <port>**: The port you're opening to create an access point to the server. 8081 is an arbitrary number I chose.
+
+Run the command first to see if everything loads.
+
+```
+❯ llama-server \
+        --device Vulkan0 \
+        --model ~/models/gpt-oss-20b-Q4_K_M.gguf \
+        --n-gpu-layers 99 \
+        --flash-attn on \
+        --ctx-size 16384 \
+        --host 127.0.0.1 \
+        --port 8081
+WARNING: radv is not a conformant Vulkan implementation, testing use only.
+0.00.130.367 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.130.591 W srv  llama_server: -----------------
+0.00.130.591 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.130.592 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.130.592 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.130.592 W srv  llama_server: -----------------
+0.00.131.848 I srv    load_model: loading model '/home/$USER/models/gpt-oss-20b-Q4_K_M.gguf'
+0.00.868.176 W load: setting token '<|message|>' (200008) attribute to USER_DEFINED (16), old attributes: 8
+0.00.868.178 W load: setting token '<|start|>' (200006) attribute to USER_DEFINED (16), old attributes: 8
+0.00.868.179 W load: setting token '<|constrain|>' (200003) attribute to USER_DEFINED (16), old attributes: 8
+0.00.869.384 W load: setting token '<|channel|>' (200005) attribute to USER_DEFINED (16), old attributes: 8
+0.00.875.715 W load: special_eog_ids contains both '<|return|>' and '<|call|>', or '<|calls|>' and '<|flush|>' tokens, removing '<|end|>' token from EOG list
+0.23.437.498 I cmn          init: llama threadpool init, n_threads = 8
+0.23.529.379 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 16384, kv_unified = 'true'
+0.23.536.268 I srv  llama_server: model loaded
+0.23.536.301 I srv  llama_server: listening on http://127.0.0.1:8081
+```
+
+The last two lines mean that ```llama-server``` has started and can be accessed at ```http://127.0.0.1:8081```. Some notes about the log:
+
+- The numbers at the start are a timestamp since the server was started. The last line shows that ```lllama-server``` took 23 seconds, 536 milliseconds, and 301 microseconds to load this model.
+- I and W are Info and Warning respectively.
+- The line about verbosity is telling us how much we want the log to spit back at us. Useful for diagnosis. If you don't like all this startup noise, you can lower it by adding the ```-lv N``` tag, where N is the level you want. Numbers closer to 1 show fewer messages.
+- The CORS warning lines are important, but only if we open up our server to the outside world or use it to browse outside sites. Eventually we will set this up.
+- Everything from the load_model to the line with special_eog_ids is the model handshaking with llama-server. Despite the log saying it's a warning, it's normal. Different models will have different messages here.
+- The init line that sets n_threads is the number of CPU cores that the model wants to have access to. This number will matter more if you start running models larger than your VRAM size.
+- The load_model line after that has important information. n_slots is how many concurrent requests the server can handle. n_ctx_slot means each slot has 16384 tokens of context. kv_unified means all slots share the same key-value context. If we were running the server for a single purpose, we could tweak these numbers to make the model more performant. Let's leave it at the default for now.
+
+Now, for a big test. Open a new terminal and send a curl request to your server:
+
+```
+curl -s localhost:8081/health
+{"status":"ok"}
+```
+
+If you get the JSON there, the server is open to requests! Some things to try:
+
+This will tell you what model it thinks it has loaded. FYI, jq is a JSON processor to help with printing and showing just the response we want from the returned JSON target.
+```
+curl -s localhost:8081/props | jq '.model_path'
+```
+Should return something like:
+
+```
+"/home/$USER/models/gpt-oss-20b-Q4_K_M.gguf"
+```
+
+
+And now let's send an actual request to the model and get something back:
+
+```
+curl -s --json '{"model":"x","messages":[{"role":"user","content":"hi"}]}' \
+  localhost:8081/v1/chat/completions | jq -r '.choices[0].message.content'
+```
+
+Should return something like:
+
+```
+Hello! How can I assist you today?
+```
+
+## Where Are We At?
+
+At this point, take a little break. You've done quite a lot! You've
+
+- Got drivers and the LLM processing libraries talking to CachyOS and ```llama-cpp```
+- Got a model from HuggingFace to play with and set up authentication with them to make it easy to download future models
+- Got ```lllama-server``` to load your model
+- Sent a request to the model and successfully got a response back
+
+If you are already familiar with how a REST API works, here are the details for ```llama-server```: (https://llama.app/docs/api)[https://llama.app/docs/api]
+
+Now we need to set up llama-swap for the next stage. See the (llama-swap page)[./llama-swap.md] to continue this setup guide.
