@@ -10,7 +10,7 @@ Last updated: 2026-09-20
 
 1. You have CachyOS installed and updated.
 2. You have some familiarity with Linux and Arch-based systems.
-3. You have CachyOS's AMD kernel drivers installed. I switched from an NVIDIA card to an AMD card, so i used the instructions (here)[https://wiki.cachyos.org/features/chwd/gpu_migration/] from CachyOS do do the driver flip.
+3. You have CachyOS's AMD kernel drivers installed. I switched from an NVIDIA card to an AMD card, so i used the [instructions from CachyOS here](https://wiki.cachyos.org/features/chwd/gpu_migration/) to do the driver flip.
 4. You have an AMD card from the RDNA4 class. These are cards in the Radeon RX 9000 series. This may work with other AMD cards but I cannot guarantee it.
 5. You have only one discrete GPU, not multiple cards (integrated GPU with your motherboard does not count).
 6. At least 32 GB of system RAM.
@@ -120,9 +120,9 @@ mkdir ./models
 ```
 ### Accessing HuggingFace
 
-HuggingFace is a repository of models. It will be easier on you if you make a HuggingFace account now at (huggingface.co)[https://huggingface.co] because you'll get faster download speeds.
+HuggingFace is a repository of models. It will be easier on you if you make a HuggingFace account now at [huggingface.co](https://huggingface.co) because you'll get faster download speeds.
 
-Once you make an account, go to (https://huggingface.co/settings/tokens)[https://huggingface.co/settings/tokens]. Click on the "+ Create new token" button. Choose a Read token type and give it a name, then click Create New Token. A modal will pop up with a key. Copy that key and paste it into a text file. Do not close the window before this! If you do, delete the token and create a new one.
+Once you make an account, go to [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens). Click on the "+ Create new token" button. Choose a Read token type and give it a name, then click Create New Token. A modal will pop up with a key. Copy that key and paste it into a text file. Do not close the window before this! If you do, delete the token and create a new one.
 
 Now, log into HuggingFace on the command line.
 
@@ -154,7 +154,7 @@ You can confirm you're authenticated by typing:
 
 ### Get a Model
 
-It is very important to choose a model that fits your card, and this can involve a lot of experimentation. We are going to get a model from the (unsloth/gpt-oss-20b-GGUF)[unsloth/gpt-oss-20b-GGUF] repository.
+It is very important to choose a model that fits your card, and this can involve a lot of experimentation. We are going to get a model from the [unsloth/gpt-oss-20b-GGUF](unsloth/gpt-oss-20b-GGUF) repository.
 
 Let's see what's in this repository first:
 
@@ -313,6 +313,6 @@ At this point, take a little break. You've done quite a lot! You've
 - Got ```lllama-server``` to load your model
 - Sent a request to the model and successfully got a response back
 
-If you are already familiar with how a REST API works, here are the details for ```llama-server```: (https://llama.app/docs/api)[https://llama.app/docs/api]
+If you are already familiar with how a REST API works, here are the details for ```llama-server```: [https://llama.app/docs/api](https://llama.app/docs/api)
 
-Now we need to set up llama-swap for the next stage. See the (llama-swap page)[./llama-swap.md] to continue this setup guide.
+Now we need to set up llama-swap for the next stage. See the [llama-swap page](./llama-swap.md) to continue this setup guide.
